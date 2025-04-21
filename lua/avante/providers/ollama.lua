@@ -39,16 +39,21 @@ end
 function M:parse_curl_args(prompt_opts)
   local provider_conf, request_body = P.parse_config(self)
   local keep_alive = provider_conf.keep_alive or "5m"
+  local headers = {
+    ["Content-Type"] = "application/json",
+    ["Accept"] = "application/json",
+  }
 
   if not provider_conf.model or provider_conf.model == "" then error("Ollama model must be specified in config") end
   if not provider_conf.endpoint then error("Ollama requires endpoint configuration") end
+  if P.env.require_api_key(provider_conf) then
+    local api_key = self.parse_api_key()
+    headers["Authorization"] = "Bearer " .. api_key
+  end
 
   return {
     url = Utils.url_join(provider_conf.endpoint, "/api/chat"),
-    headers = {
-      ["Content-Type"] = "application/json",
-      ["Accept"] = "application/json",
-    },
+    headers = headers,
     body = vim.tbl_deep_extend("force", {
       model = provider_conf.model,
       messages = self:parse_messages(prompt_opts),
